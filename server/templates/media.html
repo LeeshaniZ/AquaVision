@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}AI Analysis | AQUA LAB{% endblock %}
+{% block page_title %}Batch Media Analysis{% endblock %}
+
+{% block content %}
+<div class="grid-layout cols-2">
+    <div class="panel">
+        <div class="panel-header">Upload Media</div>
+        <div class="upload-area" id="upload-zone">
+            <input type="file" id="fileInput" accept="image/*,video/*" class="hidden-input">
+            <i class="fa-solid fa-cloud-arrow-up text-blue mb-2" style="font-size:2rem;"></i>
+            <p>Drag and drop files here or <span class="text-blue cursor-pointer">browse</span></p>
+            <small class="text-muted">Supported formats: JPG, PNG, MP4, AVI</small>
+        </div>
+        <button id="uploadBtn" class="btn btn-primary mt-3 w-100" onclick="startUpload()">
+            <i class="fa-solid fa-microchip"></i> Run YOLOv8 Analysis
+        </button>
+        <div id="uploadStatus" class="mt-2 text-center text-sm"></div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">Analysis Results</div>
+        <div id="resultContainer" class="result-placeholder">
+            <i class="fa-solid fa-magnifying-glass mb-2"></i>
+            <p>Awaiting media for inference...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const zone = document.getElementById('upload-zone');
+    const input = document.getElementById('fileInput');
+
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault(); zone.classList.remove('drag-over');
+        if(e.dataTransfer.files.length) { input.files = e.dataTransfer.files; updateUI(); }
+    });
+    input.addEventListener('change', updateUI);
+
+    function updateUI() {
+        if(input.files.length) {
+            zone.innerHTML = `<i class="fa-solid fa-file-circle-check text-green mb-2" style="font-size:2rem;"></i><p>Selected: <span class="text-green">${input.files[0].name}</span></p>`;
+        }
+    }
+
+    function startUpload() {
+        if(!input.files[0]) return alert("Select a file first.");
+        
+        const formData = new FormData();
+        formData.append('file', input.files[0]);
+        
+        const btn = document.getElementById('uploadBtn');
+        const status = document.getElementById('uploadStatus');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+        status.innerHTML = '<span class="text-muted">Running inference...</span>';
+        
+        fetch('/upload', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-microchip"></i> Run YOLOv8 Analysis';
+            if(data.status === 'success') {
+                status.innerHTML = '<span class="text-green">Analysis complete.</span>';
+                renderResult(data);
+            } else {
+                status.innerHTML = `<span class="text-red">Error: ${data.message}</span>`;
+            }
+        }).catch(err => {
+            btn.disabled = false;
+            status.innerHTML = '<span class="text-red">Upload failed.</span>';
+        });
+    }
+
+    function renderResult(data) {
+        const rc = document.getElementById('resultContainer');
+        rc.classList.remove('result-placeholder');
+        
+        if (data.file_type === 'image') {
+            let html = `<div style="text-align:left;">
+                <p class="mb-2">Found <strong>${data.results.total_fish}</strong> target(s).</p>
+                <img src="/result/${data.filename}" style="width:100%; border-radius:4px; margin-bottom:10px;">
+                <div style="max-height: 200px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">`;
+            data.results.fish_details.forEach(f => {
+                html += `<div style="background:rgba(255,255,255,0.05); padding:8px; border-radius:4px; font-size:12px; display:flex; justify-content:space-between;">
+                            <span>Target #${f.fish_num} (L:${f.length_cm} W:${f.width_cm})</span>
+                            <span class="text-blue">${(f.confidence*100).toFixed(0)}%</span>
+                         </div>`;
+            });
+            rc.innerHTML = html + `</div></div>`;
+        } else {
+            rc.innerHTML = `<div style="text-align:center;">
+                <i class="fa-solid fa-film mb-3" style="font-size:3rem; color:var(--purple)"></i>
+                <div style="display:flex; justify-content:center; gap:20px; margin-bottom:20px;">
+                    <div><div class="text-muted text-sm">Frames</div><div style="font-size:20px; font-weight:bold;">${data.results.total_frames}</div></div>
+                    <div><div class="text-muted text-sm">Max/Frame</div><div style="font-size:20px; font-weight:bold;">${data.results.max_fish_in_frame}</div></div>
+                </div>
+                <a href="/result/${data.filename}" download class="btn btn-primary"><i class="fa-solid fa-download"></i> Download Video</a>
+            </div>`;
+        }
+    }
+</script>
+{% endblock %}

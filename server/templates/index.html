@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | AQUA LAB{% endblock %}
+{% block page_title %}Real-time Dashboard{% endblock %}
+
+{% block content %}
+<div class="grid-layout cols-3">
+    <!-- Main Video Feed (Takes up 2 columns) -->
+    <div class="panel col-span-2 row-span-2 video-panel">
+        <div class="panel-header flex-between">
+            <span><i class="fa-solid fa-video"></i> Live YOLOv8 Inference Feed</span>
+            <div class="live-badge"><span class="dot"></span> LIVE</div>
+        </div>
+        <div class="video-wrapper">
+            <img src="/video_feed" alt="Camera offline" class="live-stream">
+            <div class="video-stats">
+                <i class="fa-solid fa-fish"></i> Targets Tracked: <span id="dash-count" class="highlight">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Metrics -->
+    <div class="panel">
+        <div class="panel-header">System Metrics</div>
+        <div class="metric-block blue-theme">
+            <div class="metric-label">Temperature</div>
+            <div class="metric-value"><span id="dash-temp">--</span><span class="unit">°C</span></div>
+            <div class="progress-bar"><div class="progress" id="prog-temp" style="width:0%"></div></div>
+        </div>
+        <div class="metric-block green-theme mt-3">
+            <div class="metric-label">Turbidity</div>
+            <div class="metric-value"><span id="dash-turb">--</span><span class="unit">NTU</span></div>
+            <div class="progress-bar"><div class="progress" id="prog-turb" style="width:0%"></div></div>
+        </div>
+        <div class="metric-block purple-theme mt-3">
+            <div class="metric-label">Current pH</div>
+            <div class="metric-value"><span id="dash-ph">--</span></div>
+            <div class="progress-bar"><div class="progress" id="prog-ph" style="width:0%"></div></div>
+        </div>
+    </div>
+
+    <!-- System Alerts -->
+    <div class="panel">
+        <div class="panel-header">Recent Alerts</div>
+        <div class="alerts-feed" id="dash-alerts">
+            <div class="alert-item empty">System optimal. No alerts.</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Dashboard Specific Polling
+    setInterval(() => {
+        fetch("/get-sensor")
+        .then(res => res.json())
+        .then(data => {
+            if(data.temperature !== undefined) {
+                document.getElementById('dash-temp').innerText = data.temperature.toFixed(1);
+                document.getElementById('prog-temp').style.width = Math.min(100, Math.max(0, ((data.temperature-15)/15)*100)) + '%';
+            }
+            if(data.turbidity !== undefined) {
+                document.getElementById('dash-turb').innerText = data.turbidity.toFixed(1);
+                document.getElementById('prog-turb').style.width = Math.min(100, (data.turbidity/20)*100) + '%';
+            }
+            if(data.ph !== undefined) {
+                document.getElementById('dash-ph').innerText = data.ph.toFixed(1);
+                document.getElementById('prog-ph').style.width = Math.min(100, (data.ph/14)*100) + '%';
+            }
+        }).catch(()=>{});
+    }, 2000);
+
+    setInterval(() => {
+        fetch("/get-fish-data")
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('dash-count').innerText = data.count || 0;
+        }).catch(()=>{});
+    }, 2000);
+
+    setInterval(() => {
+        fetch("/get-alerts")
+        .then(res => res.json())
+        .then(alerts => {
+            let html = "";
+            if (alerts.length > 0) {
+                alerts.forEach(alert => {
+                    let cls = 'alert-warning';
+                    if(alert.type.toLowerCase() === 'ph') cls = 'alert-danger';
+                    const time = new Date(alert.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                    html += `<div class="alert-item ${cls}"><span class="time">[${time}]</span> ${alert.message}</div>`;
+                });
+            } else {
+                html = '<div class="alert-item empty">System optimal. No alerts.</div>';
+            }
+            document.getElementById('dash-alerts').innerHTML = html;
+        }).catch(()=>{});
+    }, 5000);
+</script>
+{% endblock %}

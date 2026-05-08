@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Settings | AQUA LAB{% endblock %}
+{% block page_title %}System Configuration{% endblock %}
+
+{% block content %}
+<div class="grid-layout cols-2">
+    <div class="panel">
+        <div class="panel-header">Hardware Alert Thresholds</div>
+        <p class="text-muted text-sm mb-4">Configure the boundaries for automatic system warnings.</p>
+        
+        <form class="settings-form">
+            <div class="form-group">
+                <label>Target pH</label>
+                <input type="number" step="0.1" id="cfg-target-ph" class="form-input">
+            </div>
+            
+            <div class="grid-layout cols-2 mt-3 mb-3">
+                <div class="form-group">
+                    <label>Min pH Warning</label>
+                    <input type="number" step="0.1" id="cfg-ph-min" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>Max pH Warning</label>
+                    <input type="number" step="0.1" id="cfg-ph-max" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>Min Temp (°C)</label>
+                    <input type="number" step="0.5" id="cfg-temp-min" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>Max Temp (°C)</label>
+                    <input type="number" step="0.5" id="cfg-temp-max" class="form-input">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Fish Density Warning Threshold</label>
+                <input type="number" id="cfg-fish-max" class="form-input">
+            </div>
+
+            <button type="button" class="btn btn-primary mt-4 w-100" onclick="saveConfig()">
+                <i class="fa-solid fa-save"></i> Save Configuration
+            </button>
+            <div id="cfg-status" class="mt-2 text-center text-sm"></div>
+        </form>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">Hardware Status Matrix</div>
+        <div class="hw-matrix mt-3">
+            <div class="hw-item">
+                <div class="hw-icon"><i class="fa-solid fa-microchip"></i></div>
+                <div class="hw-details">
+                    <div class="hw-name">ESP32 Controller</div>
+                    <div class="hw-desc">Sensor relay interface</div>
+                </div>
+                <div class="hw-status text-green">ONLINE</div>
+            </div>
+
+            <div class="hw-item">
+                <div class="hw-icon"><i class="fa-solid fa-camera"></i></div>
+                <div class="hw-details">
+                    <div class="hw-name">YOLOv8 Vision System</div>
+                    <div class="hw-desc">Live inference module</div>
+                </div>
+                <div class="hw-status text-green">ACTIVE</div>
+            </div>
+
+            <div class="hw-item">
+                <div class="hw-icon"><i class="fa-solid fa-database"></i></div>
+                <div class="hw-details">
+                    <div class="hw-name">SQLite Local Storage</div>
+                    <div class="hw-desc">Persistent telemetry data</div>
+                </div>
+                <div class="hw-status text-green">MOUNTED</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        fetch('/api/settings')
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('cfg-target-ph').value = data.target_ph || 7.0;
+            document.getElementById('cfg-ph-min').value = data.ph_min;
+            document.getElementById('cfg-ph-max').value = data.ph_max;
+            document.getElementById('cfg-temp-min').value = data.temp_min;
+            document.getElementById('cfg-temp-max').value = data.temp_max;
+            document.getElementById('cfg-fish-max').value = data.fish_threshold;
+        }).catch(err => console.error(err));
+    });
+
+    function saveConfig() {
+        const payload = {
+            target_ph: document.getElementById('cfg-target-ph').value,
+            ph_min: document.getElementById('cfg-ph-min').value,
+            ph_max: document.getElementById('cfg-ph-max').value,
+            temp_min: document.getElementById('cfg-temp-min').value,
+            temp_max: document.getElementById('cfg-temp-max').value,
+            fish_threshold: document.getElementById('cfg-fish-max').value
+        };
+        
+        fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            const status = document.getElementById('cfg-status');
+            if(data.status === 'success') {
+                status.innerHTML = '<span class="text-green">Configuration saved.</span>';
+            } else {
+                status.innerHTML = '<span class="text-red">Failed to save.</span>';
+            }
+            setTimeout(() => status.innerHTML = '', 3000);
+        });
+    }
+</script>
+{% endblock %}

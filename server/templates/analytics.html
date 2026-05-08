@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics | AQUA LAB{% endblock %}
+{% block page_title %}Sensor Analytics{% endblock %}
+
+{% block content %}
+<div class="grid-layout cols-1">
+    <div class="panel">
+        <div class="panel-header flex-between">
+            <span><i class="fa-solid fa-chart-area"></i> pH & Temperature Trends</span>
+            <select id="time-range" class="dark-select" onchange="fetchCharts()">
+                <option value="1">Last 1 Hour</option>
+                <option value="6">Last 6 Hours</option>
+                <option value="24">Last 24 Hours</option>
+            </select>
+        </div>
+        <div class="chart-container">
+            <canvas id="mainChart"></canvas>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fa-solid fa-water"></i> Turbidity Trends</span>
+        </div>
+        <div class="chart-container">
+            <canvas id="turbChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let mainChart, turbChart;
+
+    Chart.defaults.color = '#8b949e';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.scale.grid.color = 'rgba(255, 255, 255, 0.05)';
+
+    function initCharts() {
+        const ctx1 = document.getElementById('mainChart').getContext('2d');
+        const ctx2 = document.getElementById('turbChart').getContext('2d');
+
+        mainChart = new Chart(ctx1, {
+            type: 'line',
+            data: { labels: [], datasets: [
+                { label: 'pH', borderColor: '#bc8cff', backgroundColor: 'rgba(188, 140, 255, 0.1)', yAxisID: 'y', data: [], fill: true, tension: 0.3 },
+                { label: 'Temp (°C)', borderColor: '#58a6ff', backgroundColor: 'rgba(88, 166, 255, 0.1)', yAxisID: 'y1', data: [], fill: true, tension: 0.3 }
+            ]},
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { maxTicksLimit: 10 } },
+                    y: { type: 'linear', position: 'left', min: 4, max: 10 },
+                    y1: { type: 'linear', position: 'right', min: 15, max: 35, grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+
+        turbChart = new Chart(ctx2, {
+            type: 'line',
+            data: { labels: [], datasets: [
+                { label: 'Turbidity (NTU)', borderColor: '#3fb950', backgroundColor: 'rgba(63, 185, 80, 0.1)', data: [], fill: true, tension: 0.3 }
+            ]},
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { maxTicksLimit: 10 } },
+                    y: { type: 'linear', position: 'left', min: 0, max: 20 }
+                }
+            }
+        });
+    }
+
+    function fetchCharts() {
+        const hours = document.getElementById('time-range').value;
+        fetch(`/get-sensor-history?hours=${hours}`)
+        .then(res => res.json())
+        .then(readings => {
+            if (mainChart && turbChart && readings.length > 0) {
+                const labels = readings.map(r => new Date(r.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+                mainChart.data.labels = labels;
+                mainChart.data.datasets[0].data = readings.map(r => r.ph);
+                mainChart.data.datasets[1].data = readings.map(r => r.temperature);
+                mainChart.update();
+
+                turbChart.data.labels = labels;
+                turbChart.data.datasets[0].data = readings.map(r => r.turbidity);
+                turbChart.update();
+            }
+        }).catch(()=>{});
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initCharts();
+        fetchCharts();
+        setInterval(fetchCharts, 10000);
+    });
+</script>
+{% endblock %}

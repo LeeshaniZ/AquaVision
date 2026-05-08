@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AquaVision{% endblock %}</title>
+    <!-- Fun, creative fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    
+    <!-- Immersive Underwater Background -->
+    <div class="underwater-bg">
+        <div class="light-rays"></div>
+        <div class="bubbles">
+            <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+            <div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>
+        </div>
+        <div class="ocean-floor"></div>
+    </div>
+
+    <div class="layout-wrapper">
+        <!-- Playful Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-fish-fins brand-icon pulse"></i>
+                <span class="brand-text">AquaVision</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
+                    <i class="fa-solid fa-water"></i>
+                    <span>My Aquarium</span>
+                </a>
+                <a href="/analytics" class="nav-link {% if request.path == '/analytics' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Water Trends</span>
+                </a>
+                <a href="/media" class="nav-link {% if request.path == '/media' %}active{% endif %}">
+                    <i class="fa-solid fa-camera-retro"></i>
+                    <span>Fish Scanner</span>
+                </a>
+                <a href="/settings" class="nav-link {% if request.path == '/settings' %}active{% endif %}">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Tank Settings</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <h2 class="page-title">{% block page_title %}My Aquarium{% endblock %}</h2>
+                <div class="header-actions">
+                    <div class="status-bubble">
+                        <i class="fa-solid fa-circle-check"></i> All Good!
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Container -->
+            <div class="content-container">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="/static/script.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
