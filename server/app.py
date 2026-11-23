@@ -217,7 +217,14 @@ def upload_file():
         is_video = file_type in {'mp4', 'avi', 'mov', 'mkv'}
         
         results = process_uploaded_file(filepath, is_image, is_video)
-        
+        if results.get("status") != "success":
+            return jsonify({
+                "status": "error",
+                "filename": filename,
+                "message": results.get("message", "File processing failed"),
+                "results": results
+            }), 422
+
         return jsonify({
             "status": "success",
             "filename": filename,
