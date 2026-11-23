@@ -4,11 +4,11 @@
 #include <HTTPClient.h>
 #include <OneWire.h>
 #include <WiFi.h>
+#include "wifi_config.h"  // Local credentials; this file is excluded from Git.
 
-
-const char *ssid = "Leez";
-const char *password = "11111111";
-const char *serverUrl = "http://10.224.115.44:5000/api/sensors";
+const char *ssid = WIFI_SSID;
+const char *password = WIFI_PASSWORD;
+const char *serverUrl = AQUAVISION_SERVER_URL;
 
 #define PH_PIN 1
 #define TURBIDITY_PIN 2
