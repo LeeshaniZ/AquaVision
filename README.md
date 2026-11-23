@@ -99,6 +99,35 @@ The repository includes a trained model file at `server/best.pt`. The detection 
 - Removing a secret from the latest file does not remove it from Git history; historical secrets must also be purged.
 - Test relay outputs and dosing logic safely before connecting valves to an aquarium. Automated pH adjustment can harm fish if sensors or calibration are incorrect.
 
+## Sensor data modes
+
+Sensor simulation is **disabled by default** so that example values are not mistaken for live hardware readings. To enable simulated dashboard data for a demonstration, set the environment variable before starting the app:
+
+Windows PowerShell:
+
+```powershell
+$env:AQUAVISION_SIMULATED_DATA = "true"
+python run.py
+```
+
+macOS / Linux:
+
+```bash
+AQUAVISION_SIMULATED_DATA=true python run.py
+```
+
+When simulation is disabled, the dashboard waits for readings from the ESP32. The `/api/status` endpoint reports whether the current readings are simulated, from hardware, or waiting for hardware.
+
+## Server configuration
+
+Optional environment variables:
+
+- `AQUAVISION_MODEL_PATH`: path to the trained YOLO model (defaults to `server/best.pt`).
+- `AQUAVISION_ALLOW_GENERIC_MODEL=true`: explicitly permits a generic YOLOv8n fallback. This is not a goldfish-trained model and must not be treated as validated AquaVision detection.
+- `AQUAVISION_DATABASE_PATH`: custom SQLite database path.
+- `AQUAVISION_SIMULATED_DATA=true`: enable simulated sensor readings for demonstration only.
+- `AQUAVISION_HOST`, `AQUAVISION_PORT`, `FLASK_DEBUG`, `AQUAVISION_CORS_ORIGINS`: host, port, development debug mode, and allowed CORS origins.
+
 ## Current limitations
 
 - Measurement accuracy depends on camera placement and pixel-to-centimetre calibration.
