@@ -14,6 +14,10 @@ app = Flask(__name__)
 CORS(app, origins=os.getenv('AQUAVISION_CORS_ORIGINS', 'http://localhost:5000').split(','))
 logging.basicConfig(level=logging.INFO)
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE_PATH = os.getenv('AQUAVISION_DATABASE_PATH', os.path.join(BASE_DIR, 'aqua_data.db'))
+USE_SIMULATED_DATA = os.getenv('AQUAVISION_SIMULATED_DATA', 'false').lower() == 'true'
+
 # Upload folder configuration
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'mp4', 'avi', 'mov', 'mkv'}
@@ -29,7 +33,8 @@ sensor_data = {
     "temperature": 24.5,
     "turbidity": 2.5,
     "target_ph": 7.0,
-    "timestamp": datetime.now().isoformat()
+    "timestamp": datetime.now().isoformat(),
+    "data_mode": "simulated" if USE_SIMULATED_DATA else "waiting_for_hardware"
 }
 
 # Alert thresholds
@@ -47,7 +52,7 @@ db_lock = Lock()
 def init_db():
     """Initialize SQLite database for data persistence"""
     with db_lock:
-        conn = sqlite3.connect('aqua_data.db')
+        conn = sqlite3.connect(DATABASE_PATH)
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS sensor_readings
                      (id INTEGER PRIMARY KEY, ph REAL, temperature REAL, 
@@ -63,7 +68,7 @@ def init_db():
 def log_sensor_data(data):
     """Store sensor data in database"""
     with db_lock:
-        conn = sqlite3.connect('aqua_data.db')
+        conn = sqlite3.connect(DATABASE_PATH)
         c = conn.cursor()
         c.execute('''INSERT INTO sensor_readings 
                      (ph, temperature, turbidity, target_ph, timestamp)
@@ -77,7 +82,7 @@ def log_sensor_data(data):
 def log_alert(alert_type, message):
     """Store alerts in database"""
     with db_lock:
-        conn = sqlite3.connect('aqua_data.db')
+        conn = sqlite3.connect(DATABASE_PATH)
         c = conn.cursor()
         c.execute('''INSERT INTO alerts (type, message, timestamp)
                      VALUES (?, ?, ?)''',
@@ -127,8 +132,6 @@ def settings_api():
 
 init_db()
 
-USE_SIMULATED_DATA = True
-
 # --- Simulation Thread for Dashboard ---
 def simulate_dashboard_data():
     global sensor_data, USE_SIMULATED_DATA
@@ -154,8 +157,12 @@ def simulate_dashboard_data():
             check_alerts(sensor_data)
         time.sleep(2)
 
-sim_thread = Thread(target=simulate_dashboard_data, daemon=True)
-sim_thread.start()
+if USE_SIMULATED_DATA:
+    sim_thread = Thread(target=simulate_dashboard_data, daemon=True)
+    sim_thread.start()
+    logging.warning('AquaVision is running with simulated sensor data.')
+else:
+    logging.info('Sensor simulation is disabled; waiting for ESP32 readings.')
 # ---------------------------------------
 
 @app.route("/")
@@ -255,7 +262,8 @@ def receive_sensor_data():
             "temperature": data.get("temperature", 0),
             "turbidity": data.get("turbidity", 0),
             "target_ph": data.get("target_pH", data.get("target_ph", ALERTS["target_ph"])),
-            "timestamp": data["timestamp"]
+            "timestamp": data["timestamp"],
+            "data_mode": "hardware"
         }
 
         # Log to database
@@ -275,6 +283,15 @@ def receive_sensor_data():
         logging.error(f"Error receiving sensor data: {e}")
         return jsonify({"status":"error", "message":str(e)}), 500
 
+@app.route("/api/status")
+def api_status():
+    """Report whether readings are simulated or received from hardware."""
+    return jsonify({
+        "sensor_data_mode": sensor_data.get("data_mode", "waiting_for_hardware"),
+        "simulation_enabled": USE_SIMULATED_DATA
+    })
+
+
 @app.route("/get-sensor")
 def get_sensor():
     return jsonify(sensor_data)
@@ -287,7 +304,7 @@ def get_fish():
 def get_alerts():
     """Get recent alerts from database"""
     with db_lock:
-        conn = sqlite3.connect('aqua_data.db')
+        conn = sqlite3.connect(DATABASE_PATH)
         c = conn.cursor()
         c.execute('''SELECT type, message, timestamp FROM alerts 
                      ORDER BY timestamp DESC LIMIT 10''')
@@ -300,7 +317,7 @@ def get_sensor_history():
     """Get sensor data from last N hours"""
     hours = request.args.get('hours', 1, type=int)
     with db_lock:
-        conn = sqlite3.connect('aqua_data.db')
+        conn = sqlite3.connect(DATABASE_PATH)
         c = conn.cursor()
         c.execute('''SELECT ph, temperature, turbidity, target_ph, timestamp 
                      FROM sensor_readings WHERE timestamp > datetime('now', '-' || ? || ' hours')
