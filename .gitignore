@@ -1,2 +1,22 @@
-# Local ESP32 network credentials
+# Local network credentials
 esp32/wifi_config.h
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+
+# Runtime data and uploads
+server/uploads/
+server/aqua_data.db
+*.sqlite
+*.sqlite3
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
