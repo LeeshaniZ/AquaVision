@@ -5,34 +5,24 @@ The ESP32 collects sensor data and sends it to your Flask server every 10 second
 
 ---
 
-## 🔧 STEP 1: Configure WiFi & Server
+## 🔧 STEP 1: Configure Wi-Fi and Server
 
-Edit `esp32/aqurium_final.ino` (lines 10-13):
+Never commit real Wi-Fi credentials or private network details to this repository.
+
+1. In the `esp32` folder, copy `wifi_config.example.h` and rename the copy to `wifi_config.h`.
+2. Open your local `wifi_config.h` and enter your own 2.4 GHz Wi-Fi network name, password, and Flask server URL.
+3. Keep `wifi_config.h` local. It is excluded by the repository's `.gitignore` file.
+4. If you change your router password, update the local configuration file and upload the firmware again.
+
+Example configuration (use placeholders only in shared documentation):
 
 ```cpp
-// ========== YOUR NETWORK SETTINGS ==========
-const char* ssid = "Leez";              // ← Your WiFi name
-const char* password = "11111111";      // ← Your WiFi password
-
-// ========== SERVER ENDPOINT (Laptop IP) ==========
-const char* serverUrl = "http://10.224.115.44:5000/api/sensors";  // ← Your server IP
+#define WIFI_SSID "YOUR_WIFI_NAME"
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+#define AQUAVISION_SERVER_URL "http://YOUR_LAPTOP_IP:5000/api/sensors"
 ```
 
-### How to find your Server IP:
-```powershell
-# Run this on your laptop:
-ipconfig
-
-# Look for "IPv4 Address" under your network adapter
-# Example: 192.168.1.100 or 10.224.115.44
-```
-
-### Example:
-```cpp
-const char* ssid = "MyHomeWiFi";
-const char* password = "MyPassword123";
-const char* serverUrl = "http://192.168.1.100:5000/api/sensors";
-```
+To find your laptop's local IP address on Windows, run `ipconfig` and check the IPv4 address of the connected network adapter. Use that address in your local configuration file.
 
 ---
 
@@ -196,7 +186,7 @@ temp = sensors.getTempCByIndex(0);
 ```
 [BOOT] Aquarium Controller starting...
 [EEPROM] Loaded target pH: 7.0
-[WiFi] Connecting to Leez
+[WiFi] Connecting to YOUR_WIFI_NAME
 [WiFi] Connected! IP: 192.168.1.50
 pH:6.8  Temp:25.5  Turbidity:45
 [HTTP] POST success → status 200
@@ -275,36 +265,13 @@ Server responds:
 
 ## 📚 Complete Configuration Example
 
-```cpp
-// ===== EXAMPLE: Complete Custom Setup =====
-
-// WiFi
-const char* ssid = "MyNetwork";
-const char* password = "Pass123456";
-const char* serverUrl = "http://192.168.1.100:5000/api/sensors";
-
-// Custom Pins (if using different board)
-#define PH_PIN           32      // GPIO32 for pH
-#define TURBIDITY_PIN    33      // GPIO33 for turbidity
-#define DS18B20_PIN      14      // GPIO14 for temperature
-#define VALVE_A_PIN      25      // GPIO25 for acidic valve
-#define VALVE_B_PIN      26      // GPIO26 for basic valve
-
-// Sensor Behavior
-float targetPH = 6.8;            // Slightly acidic
-const float pH_TOLERANCE = 0.15; // Allow ±0.15 variance
-const unsigned long VALVE_OPEN_MS = 3000;   // Quick 3-second dose
-const unsigned long STABILISE_MS = 30000;   // 30-second wait
-
-// Calibration
-// turbidity = map(turbRaw, 200, 4000, 100, 0);  // Custom range
-```
+Create a local `esp32/wifi_config.h` file based on `esp32/wifi_config.example.h`. Keep real credentials in that local file only; do not commit it or share it in screenshots.
 
 ---
 
 ## 🎯 Summary
 
-1. ✅ Update WiFi credentials
+1. ✅ Configure local Wi-Fi credentials in the ignored `wifi_config.h` file
 2. ✅ Update server IP (from `verify.py`)
 3. ✅ Verify sensor pin assignments
 4. ✅ Calibrate pH and turbidity sensors
