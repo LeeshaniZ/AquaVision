@@ -1,4 +1,5 @@
 from flask import Flask, render_template, Response, request, jsonify, send_file
+from werkzeug.utils import secure_filename
 from flask_cors import CORS
 from ai_processor import generate_frames, latest_data, process_uploaded_file
 import logging
@@ -10,7 +11,7 @@ import random
 import time
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=os.getenv('AQUAVISION_CORS_ORIGINS', 'http://localhost:5000').split(','))
 logging.basicConfig(level=logging.INFO)
 
 # Upload folder configuration
@@ -194,7 +195,10 @@ def upload_file():
         
         # Save uploaded file
         import secrets
-        filename = secrets.token_hex(8) + '_' + file.filename
+        safe_original_name = secure_filename(file.filename)
+        if not safe_original_name:
+            return jsonify({"status": "error", "message": "Invalid filename"}), 400
+        filename = secrets.token_hex(8) + '_' + safe_original_name
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
@@ -314,4 +318,8 @@ def video_feed():
     )
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(
+        host=os.getenv('AQUAVISION_HOST', '0.0.0.0'),
+        port=int(os.getenv('AQUAVISION_PORT', '5000')),
+        debug=os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+    )
