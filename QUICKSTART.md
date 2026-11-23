@@ -73,6 +73,12 @@ Example image upload:
 curl -F "file=@image.jpg" http://127.0.0.1:5000/upload
 ```
 
+## Optional environment settings
+
+To run the dashboard with demo readings only, set `AQUAVISION_SIMULATED_DATA=true` before launching. This setting is off by default; without it, the dashboard waits for actual ESP32 data.
+
+The server also supports `AQUAVISION_MODEL_PATH`, `AQUAVISION_ALLOW_GENERIC_MODEL`, `AQUAVISION_DATABASE_PATH`, `AQUAVISION_HOST`, `AQUAVISION_PORT`, `FLASK_DEBUG`, and `AQUAVISION_CORS_ORIGINS`. See the main README for details.
+
 ## Configuration
 
 The server accepts these optional environment variables:
