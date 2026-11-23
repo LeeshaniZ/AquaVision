@@ -5,24 +5,33 @@ from datetime import datetime
 import os
 import numpy as np
 
-# Try to load model from multiple locations
-model_paths = [
-    "best.pt",  # Current directory
-    "../best.pt",  # Parent directory
-    "goldfish-detector.v4i.yolov8-obb/best.pt",  # Dataset directory
-    os.path.expanduser("~") + "/best.pt"  # Home directory
-]
+# Resolve the trained model relative to this file, not the process working directory.
+SERVER_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_MODEL_PATH = os.path.join(SERVER_DIR, "best.pt")
+MODEL_PATH = os.getenv("AQUAVISION_MODEL_PATH", DEFAULT_MODEL_PATH)
 
 model = None
-for path in model_paths:
-    if os.path.exists(path):
-        print(f"✅ Loading model from: {path}")
-        model = YOLO(path)
-        break
+if os.path.isfile(MODEL_PATH):
+    try:
+        print(f"Loading AquaVision model from: {MODEL_PATH}")
+        model = YOLO(MODEL_PATH)
+    except Exception as exc:
+        print(f"WARNING: Could not load configured model: {exc}")
+else:
+    print(
+        "WARNING: AquaVision model not found. "
+        "Fish detection is unavailable until server/best.pt is provided "
+        "or AQUAVISION_MODEL_PATH points to a valid model."
+    )
 
-if model is None:
-    print("⚠️ WARNING: No trained model found. Using pretrained YOLOv8n")
-    model = YOLO("yolov8n.pt")
+# A generic pretrained model is opt-in because its classes are not the
+# project's goldfish dataset and should not be presented as AquaVision results.
+if model is None and os.getenv("AQUAVISION_ALLOW_GENERIC_MODEL", "false").lower() == "true":
+    try:
+        model = YOLO("yolov8n.pt")
+        print("WARNING: Using generic YOLOv8n; goldfish-specific detection is not validated.")
+    except Exception as exc:
+        print(f"WARNING: Could not load generic YOLOv8n model: {exc}")
 
 # Initialize camera with error handling
 cap = None
@@ -47,8 +56,10 @@ latest_data = {
 
 
 def process_uploaded_file(filepath, is_image=True, is_video=False):
-    """Process uploaded image or video for fish detection"""
-    
+    """Process an uploaded image or video when a model is available."""
+    if model is None:
+        return {"status": "error", "message": "Fish detection model is unavailable. Configure AQUAVISION_MODEL_PATH."}
+
     try:
         if is_image:
             return process_image_file(filepath)
@@ -60,7 +71,9 @@ def process_uploaded_file(filepath, is_image=True, is_video=False):
 
 
 def process_image_file(filepath):
-    """Process a single image file"""
+    """Process a single image file."""
+    if model is None:
+        return {"status": "error", "message": "Fish detection model is unavailable."}
     try:
         image = cv2.imread(filepath)
         if image is None:
@@ -118,7 +131,9 @@ def process_image_file(filepath):
 
 
 def process_video_file(filepath):
-    """Process a video file for fish detection"""
+    """Process a video file for fish detection."""
+    if model is None:
+        return {"status": "error", "message": "Fish detection model is unavailable."}
     try:
         cap = cv2.VideoCapture(filepath)
         if not cap.isOpened():
@@ -187,7 +202,11 @@ def process_video_file(filepath):
 
 def generate_frames():
     global latest_data
-    
+
+    if model is None:
+        print("Fish detection stream unavailable: no AquaVision model is loaded.")
+        return
+
     if cap is None:
         print("⚠️ Camera not available")
         return
